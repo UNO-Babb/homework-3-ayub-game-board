@@ -3,59 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hexagon Tile Game</title>
+    <title>Tile Duel</title>
     <style>
-        body {
+        #board {
+            display: flex;
+            flex-wrap: wrap;
+            width: 300px;
+            border: 1px solid #000;
+        }
+        .tile {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #000;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            cursor: pointer;
         }
-        #board {
-            display: grid;
-            grid-template-columns: repeat(10, 60px);
-            grid-template-rows: repeat(10, 52px);
-            gap: 2px;
-        }
-        .hex {
-            width: 60px;
-            height: 52px;
-            background-color: lightgray;
-            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-            transition: background-color 0.2s;
+        #scores {
+            margin: 20px 0;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
+    <h1>Tile Duel</h1>
+    <div id="scores">
+        <p>Player 1 Score: <span id="player1-score">{{ scores[1] }}</span></p>
+        <p>Player 2 Score: <span id="player2-score">{{ scores[2] }}</span></p>
+    </div>
+    <div id="board"></div>
+    <button id="reset-button">Reset Game</button>
+    <div id="result" style="font-size: 18px; margin-top: 20px;"></div>
+    <script>
+        const board = document.getElementById('board');
+        const result = document.getElementById('result');
+        const player1Score = document.getElementById('player1-score');
+        const player2Score = document.getElementById('player2-score');
 
-<div id="board">
-    <!-- Hexagonal tiles will be added here on clicks -->
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() {
-        // Create an empty board of hex tiles
-        for (let i = 0; i < 100; i++) {
-            const hexTile = $('<div class="hex"></div>');
-            hexTile.data("clicked", false);  // Track if a tile has been clicked
-            $('#board').append(hexTile);
+        // Create an empty board with 12 tiles
+        for (let i = 0; i < 12; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.onclick = () => addTile(i);
+            board.appendChild(tile);
         }
 
-        // Add color to hex tiles on click
-        $('#board').on('click', '.hex', function() {
-            if (!$(this).data("clicked")) {  // Only allow one click per tile
-                $.getJSON('/add_tile', function(data) {
-                    $(this).css('background-color', data.color);
-                    $(this).data("clicked", true);  // Mark as clicked
-                }.bind(this));
-            }
-        });
-    });
-</script>
+        function addTile(tileIndex) {
+            fetch(`/add_tile/${tileIndex}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.winner !== null) {
+                        result.textContent = `Player ${data.winner} wins!`;
+                        updateScores();
+                    } else {
+                        result.textContent = '';
+                    }
+                    const tile = board.children[tileIndex];
+                    tile.style.backgroundColor = data.color;
+                });
+        }
 
+        function updateScores() {
+            // Fetch the updated scores from the server
+            fetch('/')
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    player1Score.textContent = doc.getElementById('player1-score').textContent;
+                    player2Score.textContent = doc.getElementById('player2-score').textContent;
+                });
+        }
+
+        document.getElementById('reset-button').onclick = () => {
+            fetch('/reset')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        result.textContent = '';
+                        for (let i = 0; i < board.children.length; i++) {
+                            board.children[i].style.backgroundColor = '';
+                        }
+                    }
+                });
+        };
+    </script>
 </body>
 </html>
+
+
+
